@@ -13,6 +13,13 @@ measurements -- and a numerical safety net keeps the covariance
 matrix well-behaved (symmetric, positive-definite) even when real
 data has sharp current transitions that would otherwise push it
 slightly invalid due to floating-point rounding.
+
+Q_PROCESS and MEAS_NOISE_VAR are the noise values used on the CALCE
+cell (test_ukf_real_data.py). ukf_step() also accepts Q_process and
+meas_noise_var as optional arguments so a different cell's test
+script can pass in its own noise assumptions, appropriate to that
+cell's own model and drive cycle, without modifying this file --
+test_ukf_panasonic.py does exactly this.
 """
 
 import numpy as np
@@ -50,7 +57,8 @@ def regularize_covariance(P):
 def ukf_step(x, P, current, dt, measured_voltage, lam=2.0,
              soc_dynamics=_default_soc_dynamics,
              v1_dynamics=_default_v1_dynamics,
-             terminal_voltage=_default_terminal_voltage):
+             terminal_voltage=_default_terminal_voltage,
+             Q_process=None, meas_noise_var=None):
     """
     x : np.array shape (2,) current state mean [SoC, V1]
     P : np.array shape (2,2) current state covariance matrix
@@ -61,8 +69,15 @@ def ukf_step(x, P, current, dt, measured_voltage, lam=2.0,
         this same filter loop run against a different cell's model
         without modifying this file.
 
+    Q_process, meas_noise_var : override the module-level Q_PROCESS /
+        MEAS_NOISE_VAR defaults, for a cell whose model and drive
+        cycle call for different noise assumptions. Left as None, the
+        defaults above are used unchanged.
+
     Returns updated (x, P).
     """
+    Q = Q_PROCESS if Q_process is None else Q_process
+    R = MEAS_NOISE_VAR if meas_noise_var is None else meas_noise_var
 
     # ============ PREDICT PHASE ============
     points, weights = generate_sigma_points(x, P, lam=lam)
@@ -86,12 +101,10 @@ def ukf_step(x, P, current, dt, measured_voltage, lam=2.0,
         [new_soc_4, new_v1_4],
     ])
 
-    # Recombine into predicted mean (weighted average)
     x_pred = (weights[0] * pred_points[0] + weights[1] * pred_points[1]
               + weights[2] * pred_points[2] + weights[3] * pred_points[3]
               + weights[4] * pred_points[4])
 
-    # Recombine into predicted covariance
     d0 = pred_points[0] - x_pred
     d1 = pred_points[1] - x_pred
     d2 = pred_points[2] - x_pred
@@ -102,7 +115,7 @@ def ukf_step(x, P, current, dt, measured_voltage, lam=2.0,
               + weights[2] * np.outer(d2, d2) + weights[3] * np.outer(d3, d3)
               + weights[4] * np.outer(d4, d4))
 
-    P_pred = P_pred + Q_PROCESS
+    P_pred = P_pred + Q
     P_pred = regularize_covariance(P_pred)
 
     # ============ UPDATE PHASE ============
@@ -119,9 +132,8 @@ def ukf_step(x, P, current, dt, measured_voltage, lam=2.0,
 
     v_var = (weights2[0]*(v0-v_mean)**2 + weights2[1]*(v1-v_mean)**2
              + weights2[2]*(v2-v_mean)**2 + weights2[3]*(v3-v_mean)**2
-             + weights2[4]*(v4-v_mean)**2) + MEAS_NOISE_VAR
+             + weights2[4]*(v4-v_mean)**2) + R
 
-    # Cross-covariance between state and predicted voltage
     dx0 = points2[0] - x_pred
     dx1 = points2[1] - x_pred
     dx2 = points2[2] - x_pred

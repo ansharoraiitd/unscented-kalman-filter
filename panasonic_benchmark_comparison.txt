@@ -1,0 +1,14 @@
+Final benchmark comparison -- Panasonic 18650PF, UDDS@25C
+Benchmark source: Guo, Li, Xue & Luo (2026), Batteries 12(3), 84, Table 4
+
+Method                             MAE (%)    RMSE (%)
+This project -- UKF                 3.4643      3.8365
+This project -- Sage-Husa AUKF      1.8814      2.0444
+------------------------------------------------------
+Paper -- UKF                        1.7900      2.1100
+Paper -- AUKF                       0.1100      0.5300
+Paper -- PSO-AUKF                   0.0990      0.4100
+Paper -- QPSO-AUKF                  0.0750      0.1800
+
+Adaptive/fixed MAE ratio:  0.543
+Adaptive/fixed RMSE ratio: 0.533

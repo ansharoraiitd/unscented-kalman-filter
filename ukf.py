@@ -23,7 +23,7 @@ from models import soc_dynamics as _default_soc_dynamics
 from models import v1_dynamics as _default_v1_dynamics
 from models import terminal_voltage as _default_terminal_voltage
 
-MEAS_NOISE_VAR = 0.000004  # assumed sensor noise variance, ~0.005V std dev
+MEAS_NOISE_VAR = 0.000004  # assumed sensor noise variance, ~0.002V std dev
 
 # Assumed process noise -- how much the model's prediction step is
 # trusted between measurements. SoC noise is small (coulomb counting
